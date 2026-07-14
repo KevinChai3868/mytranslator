@@ -20,6 +20,7 @@ class Recognizer {
         this.onError = onError;
         this.isListening = false;
         this.shouldRestart = false;
+        this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         this.finalText = "";
         this.currentText = "";
 
@@ -27,7 +28,7 @@ class Recognizer {
             return;
         }
 
-        this.recognition.continuous = true;
+        this.recognition.continuous = !this.isMobile;
         this.recognition.interimResults = true;
         this.recognition.maxAlternatives = 1;
 
@@ -61,11 +62,31 @@ class Recognizer {
                 return;
             }
 
+            if (event.error === "audio-capture") {
+                this.shouldRestart = false;
+                this.isListening = false;
+                this.onError("手機沒有取得麥克風音訊，請確認瀏覽器麥克風權限已允許。");
+                return;
+            }
+
             this.onError(`語音辨識發生問題：${event.error}`);
         };
 
         this.recognition.onend = () => {
             this.isListening = false;
+
+            if (this.isMobile) {
+                const doneText = (this.currentText || this.finalText).trim();
+                this.shouldRestart = false;
+
+                if (doneText) {
+                    this.onDone(doneText);
+                }
+
+                this.finalText = "";
+                this.currentText = "";
+                return;
+            }
 
             if (!this.shouldRestart) {
                 return;
@@ -98,7 +119,7 @@ class Recognizer {
         } catch (error) {
             this.isListening = false;
             this.shouldRestart = false;
-            this.onError("語音辨識無法啟動，請稍後再試一次。");
+            this.onError("語音辨識無法啟動。請用 Chrome 或 Edge 開啟 HTTPS 網址，並允許麥克風權限；不要用 LINE 或 Facebook 內建瀏覽器。");
             console.error("Speech recognition start failed:", error);
             return false;
         }
