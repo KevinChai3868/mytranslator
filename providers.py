@@ -48,6 +48,29 @@ CITY_ALIASES = {
     "廣島": "Hiroshima",
     "广岛": "Hiroshima",
 }
+COMMON_WEATHER_PLACES = {
+    "東京": (35.6895, 139.6917, "東京", "日本", "東京都"),
+    "东京": (35.6895, 139.6917, "東京", "日本", "東京都"),
+    "大阪": (34.6937, 135.5023, "大阪", "日本", "大阪府"),
+    "京都": (35.0116, 135.7681, "京都", "日本", "京都府"),
+    "那霸": (26.2130, 127.6785, "那霸市", "日本", "沖繩縣"),
+    "那霸市": (26.2130, 127.6785, "那霸市", "日本", "沖繩縣"),
+    "那霸機場": (26.2067, 127.6469, "那霸機場", "日本", "沖繩縣"),
+    "那霸机场": (26.2067, 127.6469, "那霸機場", "日本", "沖繩縣"),
+    "沖繩": (26.2130, 127.6785, "那霸市", "日本", "沖繩縣"),
+    "冲绳": (26.2130, 127.6785, "那霸市", "日本", "沖繩縣"),
+    "札幌": (43.0618, 141.3545, "札幌", "日本", "北海道"),
+    "福岡": (33.5902, 130.4017, "福岡", "日本", "福岡縣"),
+    "福冈": (33.5902, 130.4017, "福岡", "日本", "福岡縣"),
+    "名古屋": (35.1815, 136.9066, "名古屋", "日本", "愛知縣"),
+    "橫濱": (35.4437, 139.6380, "橫濱", "日本", "神奈川縣"),
+    "横滨": (35.4437, 139.6380, "橫濱", "日本", "神奈川縣"),
+    "神戶": (34.6901, 135.1955, "神戶", "日本", "兵庫縣"),
+    "神户": (34.6901, 135.1955, "神戶", "日本", "兵庫縣"),
+    "奈良": (34.6851, 135.8048, "奈良", "日本", "奈良縣"),
+    "廣島": (34.3853, 132.4553, "廣島", "日本", "廣島縣"),
+    "广岛": (34.3853, 132.4553, "廣島", "日本", "廣島縣"),
+}
 WEATHER_CODE_LABELS = {
     0: "晴朗",
     1: "大致晴朗",
@@ -78,6 +101,21 @@ WEATHER_CODE_LABELS = {
     96: "雷雨伴隨小冰雹",
     99: "雷雨伴隨大冰雹",
 }
+
+
+def _open_meteo_get_json(url, params):
+    last_error = None
+    headers = {"User-Agent": "my-translator/1.0 travel-weather"}
+
+    for _ in range(2):
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=15)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as exc:
+            last_error = exc
+
+    raise last_error
 
 
 def _build_prompt(text, source, target):
@@ -420,36 +458,36 @@ def get_weather(data):
     if not location:
         return {"ok": False, "error": "缺少 location，請輸入城市名稱，例如：那霸、東京。"}
 
-    search_name = _resolve_city_name(location)
-
     try:
-        geo_response = requests.get(
-            "https://geocoding-api.open-meteo.com/v1/search",
-            params={
-                "name": search_name,
-                "count": 1,
-                "language": "zh",
-                "format": "json",
-            },
-            timeout=10,
-        )
-        geo_response.raise_for_status()
-        geo_payload = geo_response.json()
-        results = geo_payload.get("results") or []
+        common_place = COMMON_WEATHER_PLACES.get(location)
+        if common_place:
+            latitude, longitude, city_name, country, admin1 = common_place
+        else:
+            search_name = _resolve_city_name(location)
+            geo_payload = _open_meteo_get_json(
+                "https://geocoding-api.open-meteo.com/v1/search",
+                {
+                    "name": search_name,
+                    "count": 1,
+                    "language": "zh",
+                    "format": "json",
+                },
+            )
+            results = geo_payload.get("results") or []
 
-        if not results:
-            return {"ok": False, "error": f"找不到「{location}」的天氣位置。"}
+            if not results:
+                return {"ok": False, "error": f"找不到「{location}」的天氣位置。"}
 
-        place = results[0]
-        latitude = place.get("latitude")
-        longitude = place.get("longitude")
-        city_name = place.get("name") or location
-        country = place.get("country") or ""
-        admin1 = place.get("admin1") or ""
+            place = results[0]
+            latitude = place.get("latitude")
+            longitude = place.get("longitude")
+            city_name = place.get("name") or location
+            country = place.get("country") or ""
+            admin1 = place.get("admin1") or ""
 
-        forecast_response = requests.get(
+        forecast = _open_meteo_get_json(
             "https://api.open-meteo.com/v1/forecast",
-            params={
+            {
                 "latitude": latitude,
                 "longitude": longitude,
                 "current": ",".join(
@@ -465,10 +503,7 @@ def get_weather(data):
                 "forecast_days": 1,
                 "timezone": "auto",
             },
-            timeout=10,
         )
-        forecast_response.raise_for_status()
-        forecast = forecast_response.json()
         current = forecast.get("current") or {}
         hourly = forecast.get("hourly") or {}
 
@@ -501,8 +536,11 @@ def get_weather(data):
             "updated_at": current.get("time", ""),
             "timezone": forecast.get("timezone", ""),
         }
-    except requests.RequestException:
-        return {"ok": False, "error": "無法連線到 Open-Meteo，請確認網路後再試。"}
+    except requests.RequestException as exc:
+        return {
+            "ok": False,
+            "error": f"無法連線到 Open-Meteo，請稍後再試。詳細：{type(exc).__name__}",
+        }
     except (TypeError, ValueError):
         return {"ok": False, "error": "Open-Meteo 回傳資料不完整，請稍後再試。"}
     except Exception as exc:
