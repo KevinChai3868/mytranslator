@@ -1,0 +1,19 @@
+{
+  "name": "KevinChai 翻譯器",
+  "short_name": "翻譯器",
+  "description": "旅行用翻譯、照片文字、匯率、天氣與旅遊助手",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#150820",
+  "theme_color": "#30124b",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

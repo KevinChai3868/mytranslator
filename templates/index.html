@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#30124b">
+    <title>KevinChai Translator</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main class="app-shell">
+        <header class="top-bar">
+            <div>
+                <p class="eyebrow">My Translator</p>
+                <h1>KevinChai 翻譯器</h1>
+            </div>
+            <span class="status-dot" aria-label="服務狀態"></span>
+        </header>
+
+        <section class="translator-card" aria-label="翻譯工具">
+            <div class="language-row">
+                <label class="language-field">
+                    <span>語言 A</span>
+                    <select id="language-a" name="language-a">
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="en">英文</option>
+                        <option value="ja">日文</option>
+                        <option value="ko">韓文</option>
+                    </select>
+                </label>
+
+                <button id="swap-languages" class="swap-button" type="button" aria-label="對調語言">⇄</button>
+
+                <label class="language-field">
+                    <span>語言 B</span>
+                    <select id="language-b" name="language-b">
+                        <option value="en">英文</option>
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="ja">日文</option>
+                        <option value="ko">韓文</option>
+                    </select>
+                </label>
+            </div>
+
+            <section class="result-box" aria-label="翻譯結果">
+                <div class="result-header">
+                    <p class="result-label">翻譯結果</p>
+                    <button id="speak-result" class="speak-button" type="button" disabled>朗讀</button>
+                </div>
+                <p id="translation-result" class="result-text">翻譯後的內容會顯示在這裡。</p>
+            </section>
+
+            <nav class="tool-tabs" aria-label="功能切換">
+                <button class="tool-tab is-active" type="button" data-tool-tab="text">文字</button>
+                <button class="tool-tab" type="button" data-tool-tab="photo">照片</button>
+                <button class="tool-tab" type="button" data-tool-tab="currency">匯率</button>
+                <button class="tool-tab" type="button" data-tool-tab="weather">天氣</button>
+                <button class="tool-tab" type="button" data-tool-tab="assistant">助手</button>
+            </nav>
+
+            <section class="tool-panel is-active" data-tool-panel="text" aria-label="文字翻譯">
+                <div class="voice-row">
+                    <button class="mic-button" type="button" aria-label="開始語音輸入">
+                        <span class="mic-icon" aria-hidden="true"></span>
+                    </button>
+                </div>
+
+                <form id="translate-form" class="input-area">
+                    <label for="source-text">輸入文字</label>
+                    <textarea id="source-text" name="source-text" rows="4" placeholder="請輸入想翻譯的文字"></textarea>
+                    <button id="translate-button" class="translate-button" type="submit">翻譯</button>
+                </form>
+            </section>
+
+            <section class="photo-area tool-panel" data-tool-panel="photo" aria-label="照片文字翻譯">
+                <div class="photo-actions">
+                    <label class="photo-button" for="camera-input">拍照</label>
+                    <label class="photo-button" for="upload-input">上傳照片</label>
+                    <button id="translate-photo-button" class="photo-submit-button" type="button" disabled>翻譯照片</button>
+                </div>
+                <input id="camera-input" class="photo-input" type="file" accept="image/*" capture="environment">
+                <input id="upload-input" class="photo-input" type="file" accept="image/*">
+                <img id="photo-preview" class="photo-preview" alt="待翻譯照片預覽" hidden>
+            </section>
+
+            <section class="currency-area tool-panel" data-tool-panel="currency" aria-label="匯率換算">
+                <div class="currency-header">
+                    <p class="result-label">匯率換算</p>
+                    <button id="swap-currency" class="currency-swap-button" type="button">對調</button>
+                </div>
+                <div class="currency-grid">
+                    <label class="currency-field">
+                        <span>金額</span>
+                        <input id="currency-amount" type="number" inputmode="decimal" min="0" step="0.01" value="1000">
+                    </label>
+                    <label class="currency-field">
+                        <span>從</span>
+                        <select id="currency-source">
+                            <option value="TWD">台幣 TWD</option>
+                            <option value="JPY">日幣 JPY</option>
+                            <option value="USD">美金 USD</option>
+                        </select>
+                    </label>
+                    <label class="currency-field">
+                        <span>到</span>
+                        <select id="currency-target">
+                            <option value="JPY">日幣 JPY</option>
+                            <option value="TWD">台幣 TWD</option>
+                            <option value="USD">美金 USD</option>
+                        </select>
+                    </label>
+                </div>
+                <button id="currency-button" class="currency-button" type="button">換算</button>
+                <p id="currency-result" class="currency-result">輸入金額後可快速換算旅行花費。</p>
+            </section>
+
+            <section class="weather-area tool-panel" data-tool-panel="weather" aria-label="天氣查詢">
+                <p class="result-label">天氣查詢</p>
+                <div class="weather-row">
+                    <label class="weather-field">
+                        <span>城市</span>
+                        <input id="weather-location" type="text" value="那霸" placeholder="例如：那霸、東京">
+                    </label>
+                    <button id="weather-button" class="weather-button" type="button">查詢天氣</button>
+                </div>
+                <div id="weather-result" class="weather-result">
+                    輸入城市後可查看溫度、體感、濕度和旅行建議。
+                </div>
+            </section>
+
+            <section class="assistant-area tool-panel" data-tool-panel="assistant" aria-label="旅遊助手">
+                <p class="result-label">旅遊助手</p>
+                <label class="assistant-field">
+                    <span>想問什麼</span>
+                    <textarea id="assistant-question" rows="4" placeholder="例如：那霸機場到國際通怎麼去？東京今天適合穿什麼？"></textarea>
+                </label>
+                <button id="assistant-button" class="assistant-button" type="button">問助手</button>
+                <div id="assistant-result" class="assistant-result">
+                    可問交通、行程、穿著、餐廳點餐、注意事項。
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
