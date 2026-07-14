@@ -529,6 +529,13 @@ h1 {
     background: linear-gradient(135deg, #ffe4a4, #a7f3d0);
 }
 
+.weather-note {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
 .assistant-area {
     gap: 12px;
     margin-top: 12px;

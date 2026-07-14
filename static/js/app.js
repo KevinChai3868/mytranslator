@@ -665,6 +665,7 @@ function setupWeatherLookup() {
             const place = [data.location, data.admin1, data.country]
                 .filter(Boolean)
                 .join("，");
+            const note = data.note ? `<div class="weather-note">${data.note}</div>` : "";
             resultBox.innerHTML = `
                 <div class="weather-place">${place}</div>
                 <div class="weather-main">${Math.round(data.temperature)}°C · ${data.weather}</div>
@@ -674,6 +675,7 @@ function setupWeatherLookup() {
                     <span>降雨 ${data.rain_probability}%</span>
                 </div>
                 <div class="weather-advice">${data.advice}</div>
+                ${note}
             `;
         } catch (error) {
             console.error("Weather lookup failed:", error);

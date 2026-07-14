@@ -118,6 +118,66 @@ def _open_meteo_get_json(url, params):
     raise last_error
 
 
+def _format_request_error(exc):
+    response = getattr(exc, "response", None)
+    if response is None:
+        return type(exc).__name__
+
+    detail = ""
+    try:
+        detail = response.text[:160].replace("\n", " ").strip()
+    except Exception:
+        detail = ""
+
+    if detail:
+        return f"HTTP {response.status_code}: {detail}"
+
+    return f"HTTP {response.status_code}"
+
+
+def _weather_from_wttr(location):
+    response = requests.get(
+        f"https://wttr.in/{location}",
+        params={"format": "j1", "lang": "zh-tw"},
+        headers={"User-Agent": "my-translator/1.0 travel-weather"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    current = (payload.get("current_condition") or [{}])[0]
+
+    temperature = float(current.get("temp_C"))
+    apparent_temperature = float(current.get("FeelsLikeC"))
+    humidity = int(current.get("humidity"))
+    rain_probability = int(current.get("chanceofrain") or 0)
+    weather = ((current.get("lang_zh-tw") or [{}])[0].get("value") or "").strip()
+    if not weather:
+        weather = ((current.get("weatherDesc") or [{}])[0].get("value") or "未知天氣").strip()
+
+    return {
+        "ok": True,
+        "location": location,
+        "country": "",
+        "admin1": "",
+        "temperature": temperature,
+        "apparent_temperature": apparent_temperature,
+        "humidity": humidity,
+        "weather": weather,
+        "weather_code": -1,
+        "precipitation": 0,
+        "rain_probability": rain_probability,
+        "advice": _weather_advice(
+            temperature,
+            apparent_temperature,
+            rain_probability,
+            -1,
+        ),
+        "updated_at": current.get("localObsDateTime", ""),
+        "timezone": "",
+        "source": "wttr.in fallback",
+    }
+
+
 def _build_prompt(text, source, target):
     source_label = source or "自動偵測"
     return (
@@ -537,10 +597,19 @@ def get_weather(data):
             "timezone": forecast.get("timezone", ""),
         }
     except requests.RequestException as exc:
-        return {
-            "ok": False,
-            "error": f"無法連線到 Open-Meteo，請稍後再試。詳細：{type(exc).__name__}",
-        }
+        try:
+            fallback = _weather_from_wttr(location)
+            fallback["note"] = f"Open-Meteo 暫時無法使用，已改用免金鑰備援。Open-Meteo 詳細：{_format_request_error(exc)}"
+            return fallback
+        except requests.RequestException as fallback_exc:
+            return {
+                "ok": False,
+                "error": (
+                    "無法連線到 Open-Meteo，也無法使用備援天氣服務。"
+                    f"Open-Meteo 詳細：{_format_request_error(exc)}；"
+                    f"備援詳細：{_format_request_error(fallback_exc)}"
+                ),
+            }
     except (TypeError, ValueError):
         return {"ok": False, "error": "Open-Meteo 回傳資料不完整，請稍後再試。"}
     except Exception as exc:
